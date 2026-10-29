@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>ModForge AI — Mobile Modding IDE</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/tokyo-night-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/gradle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            mocha: {
+              crust: '#11111b',
+              mantle: '#181825',
+              base: '#1e1e2e',
+              surface0: '#313244',
+              surface1: '#45475a',
+              surface2: '#585b70',
+              text: '#cdd6f4',
+              subtext: '#a6adc8',
+              mauve: '#cba6f7',
+              blue: '#89b4fa',
+              sapphire: '#74c7ec',
+              green: '#a6e3a1',
+              peach: '#fab387',
+              red: '#f38ba8',
+              yellow: '#f9e2af'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background-color: #11111b;
+      color: #cdd6f4;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+    }
+    .code-font {
+      font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #181825; }
+    ::-webkit-scrollbar-thumb { background: #45475a; border-radius: 9999px; }
+    .touch-btn { min-height: 44px; min-width: 44px; }
+    pre code.hljs { padding: 0.85rem; border-radius: 0.5rem; font-size: 0.78rem; line-height: 1.45; overflow-x: auto; }
+  </style>
+</head>
+<body class="flex flex-col h-[100dvh] w-full max-w-full overflow-hidden bg-mocha-crust text-mocha-text select-none">
+
+  <!-- TOP HEADER BAR -->
+  <header class="shrink-0 bg-mocha-mantle/95 border-b border-mocha-surface0 px-3 py-2 flex items-center justify-between gap-2 z-20">
+    <div class="flex items-center gap-2 min-w-0">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-mocha-mauve/30 to-mocha-blue/30 border border-mocha-mauve/50 flex items-center justify-center shrink-0">
+        <i data-lucide="boxes" class="w-5 h-5 text-mocha-mauve"></i>
+      </div>
+      <div class="min-w-0">
+        <div class="flex items-center gap-1.5">
+          <span class="font-bold text-sm tracking-tight text-white truncate">ModForge AI</span>
+          <span id="badge-ping" class="text-[10px] px-1.5 py-0.5 rounded-full bg-mocha-surface0 text-mocha-subtext font-medium">API Ready</span>
+        </div>
+        <div class="flex items-center gap-1 text-[11px] text-mocha-subtext truncate">
+          <span>Мод:</span>
+          <span id="active-mod-label" class="text-mocha-sapphire font-mono font-semibold truncate">crystal_relics</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-1.5 shrink-0">
+      <button onclick="openNewModModal()" class="touch-btn px-3 py-1.5 rounded-xl bg-mocha-mauve/20 hover:bg-mocha-mauve/30 active:scale-95 border border-mocha-mauve/40 text-mocha-mauve text-xs font-semibold flex items-center gap-1.5 transition">
+        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+        <span>Новый мод</span>
+      </button>
+      <a href="/api/project/zip" download class="touch-btn px-2.5 py-1.5 rounded-xl bg-mocha-surface0 hover:bg-mocha-surface1 active:scale-95 text-mocha-green text-xs font-semibold flex items-center gap-1 transition" title="Скачать .ZIP">
+        <i data-lucide="download" class="w-4 h-4"></i>
+        <span class="hidden xs:inline">.ZIP</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT VIEWPORT -->
+  <main class="flex-1 min-h-0 relative overflow-hidden bg-mocha-base">
+
+    <!-- TAB 1: AI CODER -->
+    <section id="tab-chat" class="h-full flex flex-col">
+      <div class="shrink-0 bg-mocha-mantle/80 border-b border-mocha-surface0 px-3 py-2 space-y-2">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-1.5 text-xs text-mocha-subtext overflow-x-auto no-scrollbar">
+            <span class="shrink-0 font-medium text-mocha-mauve">Контекст ИИ:</span>
+            <button onclick="toggleContextDrawer()" class="px-2.5 py-1 rounded-lg bg-mocha-surface0 hover:bg-mocha-surface1 text-xs text-mocha-text flex items-center gap-1 shrink-0">
+              <i data-lucide="file-code" class="w-3.5 h-3.5 text-mocha-blue"></i>
+              <span id="context-count-label">0 файлов выбрано</span>
+            </button>
+          </div>
+          <button onclick="clearChat()" class="text-xs text-mocha-subtext hover:text-mocha-red px-2 py-1 rounded">
+            Очистить
+          </button>
+        </div>
+
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+          <button onclick="fillQuickPrompt('item')" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-mocha-surface0/80 hover:bg-mocha-surface1 border border-mocha-mauve/30 text-[11px] text-mocha-mauve font-medium flex items-center gap-1 active:scale-95 transition">
+            <span>⚔️ Создать предмет</span>
+          </button>
+          <button onclick="fillQuickPrompt('block')" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-mocha-surface0/80 hover:bg-mocha-surface1 border border-mocha-blue/30 text-[11px] text-mocha-blue font-medium flex items-center gap-1 active:scale-95 transition">
+            <span>🧱 Создать блок + руду</span>
+          </button>
+          <button onclick="fillQuickPrompt('crash')" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-mocha-surface0/80 hover:bg-mocha-surface1 border border-mocha-peach/30 text-[11px] text-mocha-peach font-medium flex items-center gap-1 active:scale-95 transition">
+            <span>🛠️ Исправить краш-лог</span>
+          </button>
+          <button onclick="fillQuickPrompt('WritesAll')" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-mocha-surface0/80 hover:bg-mocha-surface1 border border-mocha-green/30 text-[11px] text-mocha-green font-medium flex items-center gap-1 active:scale-95 transition">
+            <span>✨ Кастомный меч с молнией</span>
+          </button>
+        </div>
+
+        <div id="context-drawer" class="hidden max-h-32 overflow-y-auto bg-mocha-crust/90 rounded-xl p-2 border border-mocha-surface0 space-y-1">
+          <div class="text-[11px] text-mocha-subtext mb-1">Отметьте файлы, которые нейросеть должна видеть перед ответом:</div>
+          <div id="context-files-list" class="space-y-1"></div>
+        </div>
+      </div>
+
+      <div id="chat-messages" class="flex-1 overflow-y-auto p-3 space-y-3 select-text">
+        <div class="bg-mocha-mantle border border-mocha-surface0 rounded-2xl p-3.5 space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-md bg-mocha-mauve/20 text-mocha-mauve text-xs font-bold">Архитектор Minecraft</span>
+            <span class="text-[11px] text-mocha-subtext">Fabric • NeoForge • Forge</span>
+          </div>
+          <p class="text-xs text-mocha-text leading-relaxed">
+            Привет! Я настроен на генерацию готовых файлов мода с тегами <code class="code-font text-mocha-sapphire">&lt;file path="..."&gt;</code>. Нажми <b>«💾 Записать в проект»</b> под любым сгенерированным блоком кода, чтобы мгновенно сохранить файл в рабочую директорию.
+          </p>
+        </div>
+      </div>
+
+      <div class="shrink-0 bg-mocha-mantle border-t border-mocha-surface0 p-2.5">
+        <div class="flex items-end gap-2">
+          <textarea
+            id="chat-input"
+            rows="2"
+            placeholder="Опиши механику мода, предмет или вставь краш-лог..."
+            class="flex-1 bg-mocha-crust text-mocha-text placeholder-mocha-subtext/60 text-sm rounded-xl px-3 py-2.5 border border-mocha-surface0 focus:border-mocha-mauve focus:outline-none resize-none"
+          ></textarea>
+          <button
+            id="btn-send"
+            onclick="sendChatMessage()"
+            class="touch-btn px-4 py-2.5 rounded-xl bg-gradient-to-r from-mocha-mauve to-mocha-blue text-mocha-crust font-bold text-sm flex items-center justify-center active:scale-95 transition shrink-0"
+          >
+            <i data-lucide="send" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: MOD FILES & CODE EDITOR -->
+    <section id="tab-files" class="h-full hidden flex-col">
+      <div class="shrink-0 bg-mocha-mantle border-b border-mocha-surface0 px-3 py-2 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <i data-lucide="folder-git-2" class="w-4 h-4 text-mocha-sapphire shrink-0"></i>
+          <select id="mod-switcher" onchange="switchActiveMod(this.value)" class="bg-mocha-surface0 text-mocha-text text-xs font-mono rounded-lg px-2.5 py-1.5 border border-mocha-surface1 focus:outline-none"></select>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button onclick="promptCreateNewFile()" class="touch-btn px-2.5 py-1.5 rounded-lg bg-mocha-surface0 hover:bg-mocha-surface1 text-xs text-mocha-text flex items-center gap-1">
+            <i data-lucide="file-plus" class="w-3.5 h-3.5 text-mocha-green"></i>
+            <span>+ Файл</span>
+          </button>
+          <button onclick="refreshFileTree()" class="touch-btn px-2.5 py-1.5 rounded-lg bg-mocha-surface0 hover:bg-mocha-surface1 text-xs text-mocha-subtext">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div id="file-tree-container" class="h-44 shrink-0 overflow-y-auto border-b border-mocha-surface0 bg-mocha-crust/70 p-2 space-y-1"></div>
+
+        <div class="flex-1 min-h-0 flex flex-col bg-mocha-base">
+          <div class="shrink-0 bg-mocha-mantle px-3 py-1.5 border-b border-mocha-surface0 flex items-center justify-between gap-2">
+            <span id="editor-file-path" class="code-font text-xs text-mocha-sapphire truncate">Выберите файл в дереве выше</span>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button onclick="saveActiveEditorFile()" class="px-3 py-1.5 rounded-lg bg-mocha-green/20 hover:bg-mocha-green/30 border border-mocha-green/40 text-mocha-green text-xs font-semibold flex items-center gap-1 active:scale-95 transition">
+                <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                <span>Сохранить</span>
+              </button>
+            </div>
+          </div>
+          <textarea
+            id="code-editor-textarea"
+            spellcheck="false"
+            placeholder="// Код выбранного файла появится здесь..."
+            class="flex-1 w-full bg-mocha-crust text-mocha-text code-font text-xs leading-relaxed p-3 focus:outline-none resize-none select-text"
+          ></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: API & MODELS -->
+    <section id="tab-api" class="h-full hidden overflow-y-auto p-3 space-y-4">
+      <div class="bg-mocha-mantle border border-mocha-mauve/40 rounded-2xl p-3.5 space-y-2.5 shadow-lg">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i data-lucide="wand-2" class="w-4 h-4 text-mocha-mauve"></i>
+            <h2 class="text-sm font-bold text-white">Авто-парсер cURL / Скрипта</h2>
+          </div>
+          <button onclick="insertDemoCurl()" class="text-[11px] text-mocha-sapphire underline">Пример AnyModel</button>
+        </div>
+        <p class="text-xs text-mocha-subtext">
+          Вставьте сырой <code class="code-font text-mocha-peach">curl</code>-запрос с сайта AnyModel, Token Club, OpenRouter или DeepSeek — регулярное выражение мгновенно извлечет Base URL, Bearer-ключ и Model ID.
+        </p>
+        <textarea
+          id="raw-curl-input"
+          rows="4"
+          placeholder='curl https://anymodel.org/v1/chat/completions -H "Authorization: Bearer sk-..." -d "{\"model\": \"ds/deepseek-v4-pro\"}"'
+          class="w-full bg-mocha-crust text-mocha-green code-font text-xs rounded-xl p-2.5 border border-mocha-surface0 focus:border-mocha-mauve focus:outline-none select-text"
+        ></textarea>
+        <button
+          onclick="parseCurlAndFill()"
+          class="touch-btn w-full py-2.5 rounded-xl bg-mocha-mauve/20 hover:bg-mocha-mauve/30 border border-mocha-mauve/50 text-mocha-mauve font-bold text-xs flex items-center justify-center gap-2 active:scale-98 transition"
+        >
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+          <span>Распарсить cURL и заполнить настройки</span>
+        </button>
+      </div>
+
+      <div class="bg-mocha-mantle border border-mocha-surface0 rounded-2xl p-3.5 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <i data-lucide="layers" class="w-4 h-4 text-mocha-blue"></i>
+            <span>Профили провайдеров (OpenAI-Compatible)</span>
+          </h3>
+        </div>
+        <div id="profiles-pills" class="flex flex-wrap gap-1.5"></div>
+
+        <div class="space-y-2.5 pt-1">
+          <div>
+            <label class="block text-[11px] text-mocha-subtext mb-1">Название профиля</label>
+            <input id="api-profile-name" type="text" value="AnyModel Hub" class="w-full bg-mocha-crust text-mocha-text text-xs rounded-xl px-3 py-2.5 border border-mocha-surface0 focus:border-mocha-blue focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-mocha-subtext mb-1">Base URL (без /chat/completions)</label>
+            <input id="api-base-url" type="text" value="https://anymodel.org/v1" class="w-full bg-mocha-crust text-mocha-sapphire code-font text-xs rounded-xl px-3 py-2.5 border border-mocha-surface0 focus:border-mocha-blue focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-mocha-subtext mb-1">API Key (Bearer Token)</label>
+            <input id="api-key-input" type="password" placeholder="sk-..." class="w-full bg-mocha-crust text-mocha-peach code-font text-xs rounded-xl px-3 py-2.5 border border-mocha-surface0 focus:border-mocha-blue focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-mocha-subtext mb-1">Model ID</label>
+            <input id="api-model-id" type="text" value="ds/deepseek-v4-pro" class="w-full bg-mocha-crust text-mocha-green code-font text-xs rounded-xl px-3 py-2.5 border border-mocha-surface0 focus:border-mocha-blue focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-2">
+          <button onclick="saveCurrentProfile()" class="touch-btn py-2.5 rounded-xl bg-mocha-blue/20 hover:bg-mocha-blue/30 border border-mocha-blue/40 text-mocha-blue font-bold text-xs flex items-center justify-center gap-1.5">
+            <i data-lucide="bookmark-check" class="w-4 h-4"></i>
+            <span>Сохранить профиль</span>
+          </button>
+          <button onclick="pingApiConnection()" class="touch-btn py-2.5 rounded-xl bg-mocha-green/20 hover:bg-mocha-green/30 border border-mocha-green/40 text-mocha-green font-bold text-xs flex items-center justify-center gap-1.5">
+            <i data-lucide="activity" class="w-4 h-4"></i>
+            <span>Проверить пинг</span>
+          </button>
+        </div>
+
+        <div id="ping-result-box" class="hidden rounded-xl p-2.5 text-xs font-mono border"></div>
+      </div>
+    </section>
+
+    <!-- TAB 4: BUILD & TERMINAL -->
+    <section id="tab-build" class="h-full hidden overflow-y-auto p-3 space-y-4">
+      <div class="bg-mocha-mantle border border-mocha-green/40 rounded-2xl p-3.5 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-white flex items-center gap-2">
+            <i data-lucide="cloud-lightning" class="w-4 h-4 text-mocha-green"></i>
+            <span>Облачная сборка .JAR (GitHub Actions)</span>
+          </h2>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-mocha-green/20 text-mocha-green font-semibold">Без нагрузки на ОЗУ</span>
+        </div>
+        <p class="text-xs text-mocha-subtext leading-relaxed">
+          Тяжелая сборка Gradle на телефоне может перегреть процессор. Сгенерируйте готовый пайплайн <code class="code-font text-mocha-sapphire">.github/workflows/build.yml</code> — при пуше в GitHub облако автоматически скомпилирует готовый <code class="code-font text-mocha-green">.jar</code> мод!
+        </p>
+        <div class="flex gap-2">
+          <button onclick="generateGithubWorkflow()" class="touch-btn flex-1 py-2.5 rounded-xl bg-mocha-green/20 hover:bg-mocha-green/30 border border-mocha-green/50 text-mocha-green font-bold text-xs flex items-center justify-center gap-2">
+            <i data-lucide="workflow" class="w-4 h-4"></i>
+            <span>Сгенерировать .github/workflows/build.yml</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-mocha-mantle border border-mocha-surface0 rounded-2xl p-3.5 space-y-2.5">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i data-lucide="terminal" class="w-4 h-4 text-mocha-peach"></i>
+          <span>Терминал рабочей папки (Termux Shell)</span>
+        </h3>
+        <div class="flex flex-wrap gap-1.5">
+          <button onclick="runQuickTerm('ls -la')" class="px-2.5 py-1.5 rounded-lg bg-mocha-surface0 text-xs code-font text-mocha-sapphire">ls -la</button>
+          <button onclick="runQuickTerm('git init && git status')" class="px-2.5 py-1.5 rounded-lg bg-mocha-surface0 text-xs code-font text-mocha-mauve">git init & status</button>
+          <button onclick="runQuickTerm('find . -maxdepth 4')" class="px-2.5 py-1.5 rounded-lg bg-mocha-surface0 text-xs code-font text-mocha-green">Дерево файлов</button>
+          <button onclick="runQuickTerm('java -version')" class="px-2.5 py-1.5 rounded-lg bg-mocha-surface0 text-xs code-font text-mocha-peach">java -version</button>
+        </div>
+        <div class="flex gap-2">
+          <input id="term-cmd-input" type="text" placeholder="Введите команду (например, git status)..." class="flex-1 bg-mocha-crust text-mocha-text code-font text-xs rounded-xl px-3 py-2.5 border border-mocha-surface0 focus:border-mocha-peach focus:outline-none" />
+          <button onclick="executeTerminalCommand()" class="touch-btn px-4 py-2.5 rounded-xl bg-mocha-peach text-mocha-crust font-bold text-xs">Выполнить</button>
+        </div>
+        <pre id="term-output" class="bg-mocha-crust text-mocha-green code-font text-[11px] p-3 rounded-xl border border-mocha-surface0 max-h-60 overflow-y-auto whitespace-pre-wrap select-text">$ Готов к выполнению команд в директории активного мода...</pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- NEW MOD GENERATOR MODAL -->
+  <div id="modal-new-mod" class="fixed inset-0 bg-black/75 z-50 hidden items-center justify-center p-4">
+    <div class="bg-mocha-mantle border border-mocha-surface1 rounded-2xl w-full max-w-md p-4 space-y-3 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-mocha-surface0 pb-2">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i data-lucide="package-plus" class="w-4 h-4 text-mocha-mauve"></i>
+          <span>Генератор шаблона мода Minecraft</span>
+        </h3>
+        <button onclick="closeNewModModal()" class="text-mocha-subtext hover:text-white p-1">✕</button>
+      </div>
+      <div class="space-y-2.5">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] text-mocha-subtext mb-1">Загрузчик</label>
+            <select id="new-mod-loader" class="w-full bg-mocha-crust text-mocha-text text-xs rounded-xl px-3 py-2.5 border border-mocha-surface0">
+              <option value="Fabric">Fabric</option>
+              <option value="NeoForge">NeoForge</option>
+              <option value="Forge">Forge</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] text-mocha-subtext mb-1">Версия Minecraft</label>
+            <select id="new-mod-mcver" class="w-full bg-mocha-crust text-mocha-text text-xs rounded-xl px-3 py-2.5 border border-mocha-surface0">
+              <option value="1.21.1">1.21.1 (Java 21)</option>
+              <option value="1.20.4">1.20.4 (Java 17)</option>
+              <option value="1.20.1">1.20.1 (Java 17)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] text-mocha-subtext mb-1">Mod ID (строчными, без пробелов)</label>
+          <input id="new-mod-id" type="text" value="shadow_arsenal" class="w-full bg-mocha-crust text-mocha-sapphire code-font text-xs rounded-xl px-3 py-2 border border-mocha-surface0" />
+        </div>
+        <div>
+          <label class="block text-[11px] text-mocha-subtext mb-1">Название мода</label>
+          <input id="new-mod-name" type="text" value="Shadow Arsenal" class="w-full bg-mocha-crust text-mocha-text text-xs rounded-xl px-3 py-2 border border-mocha-surface0" />
+        </div>
+        <div>
+          <label class="block text-[11px] text-mocha-subtext mb-1">Базовый Java-пакет</label>
+          <input id="new-mod-pkg" type="text" value="com.example.shadowarsenal" class="w-full bg-mocha-crust text-mocha-green code-font text-xs rounded-xl px-3 py-2 border border-mocha-surface0" />
+        </div>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeNewModModal()" class="touch-btn flex-1 py-2.5 rounded-xl bg-mocha-surface0 text-mocha-subtext text-xs font-semibold">Отмена</button>
+        <button onclick="submitCreateNewMod()" class="touch-btn flex-1 py-2.5 rounded-xl bg-mocha-mauve text-mocha-crust text-xs font-bold">Создать структуру</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAVIGATION BAR -->
+  <nav class="shrink-0 bg-mocha-mantle border-t border-mocha-surface0 px-2 py-1 grid grid-cols-4 gap-1 z-20">
+    <button onclick="switchTab('chat')" id="nav-btn-chat" class="touch-btn flex flex-col items-center justify-center rounded-xl py-1.5 text-mocha-mauve bg-mocha-mauve/15 font-semibold transition">
+      <i data-lucide="message-square-code" class="w-5 h-5"></i>
+      <span class="text-[11px] mt-0.5">💬 AI Кодер</span>
+    </button>
+    <button onclick="switchTab('files')" id="nav-btn-files" class="touch-btn flex flex-col items-center justify-center rounded-xl py-1.5 text-mocha-subtext hover:text-mocha-text transition">
+      <i data-lucide="folder-code" class="w-5 h-5"></i>
+      <span class="text-[11px] mt-0.5">📁 Файлы мода</span>
+    </button>
+    <button onclick="switchTab('api')" id="nav-btn-api" class="touch-btn flex flex-col items-center justify-center rounded-xl py-1.5 text-mocha-subtext hover:text-mocha-text transition">
+      <i data-lucide="cpu" class="w-5 h-5"></i>
+      <span class="text-[11px] mt-0.5">⚙️ API & Модели</span>
+    </button>
+    <button onclick="switchTab('build')" id="nav-btn-build" class="touch-btn flex flex-col items-center justify-center rounded-xl py-1.5 text-mocha-subtext hover:text-mocha-text transition">
+      <i data-lucide="rocket" class="w-5 h-5"></i>
+      <span class="text-[11px] mt-0.5">🚀 Сборка</span>
+    </button>
+  </nav>
+
+  <div id="toast-box" class="fixed top-14 left-1/2 -translate-x-1/2 z-50 hidden px-4 py-2 rounded-xl bg-mocha-surface0/95 border border-mocha-mauve text-xs font-semibold text-white shadow-xl"></div>
+
+  <script>
+    let chatHistory = [];
+    let projectFiles = [];
+    let selectedContextFiles = new Set();
+    let savedProfiles = [];
+    let activeEditorFile = "";
+    let generatedCodeStore = {};
+    let codeBlockSeq = 0;
+
+    function showToast(msg) {
+      const box = document.getElementById('toast-box');
+      box.textContent = msg;
+      box.classList.remove('hidden');
+      setTimeout(() => box.classList.add('hidden'), 2600);
+    }
+
+    function escapeHtml(str) {
+      return (str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function switchTab(tab) {
+      ['chat', 'files', 'api', 'build'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.add('hidden');
+        document.getElementById(`tab-${t}`).classList.remove('flex');
+        const btn = document.getElementById(`nav-btn-${t}`);
+        btn.className = "touch-btn flex flex-col items-center justify-center rounded-xl py-1.5 text-mocha-subtext hover:text-mocha-text transition";
+      });
+      const activeSec = document.getElementById(`tab-${tab}`);
+      activeSec.classList.remove('hidden');
+      if (tab === 'chat' || tab === 'files') activeSec.classList.add('flex');
+
+      const activeBtn = document.getElementById(`nav-btn-${tab}`);
+      activeBtn.className = "touch-btn flex flex-col items-center justify-center rounded-xl py-1.5 text-mocha-mauve bg-mocha-mauve/15 font-semibold transition";
+      if (tab === 'files') refreshFileTree();
+    }
+
+    async function initApp() {
+      lucide.createIcons();
+      const savedKey = localStorage.getItem('modforge_api_key') || '';
+      const savedUrl = localStorage.getItem('modforge_base_url') || 'https://anymodel.org/v1';
+      const savedModel = localStorage.getItem('modforge_model') || 'ds/deepseek-v4-pro';
+      document.getElementById('api-key-input').value = savedKey;
+      document.getElementById('api-base-url').value = savedUrl;
+      document.getElementById('api-model-id').value = savedModel;
+
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        document.getElementById('active-mod-label').textContent = data.active_mod;
+        savedProfiles = data.profiles || [];
+        renderProfilesPills();
+        populateModSwitcher(data.available_mods || [], data.active_mod);
+        await refreshFileTree();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function populateModSwitcher(mods, activeMod) {
+      const sel = document.getElementById('mod-switcher');
+      sel.innerHTML = mods.map(m => `<option value="${m}" ${m === activeMod ? 'selected' : ''}>${m}</option>`).join('');
+    }
+
+    async function switchActiveMod(modId) {
+      await fetch(`/api/mods/select?mod_id=${encodeURIComponent(modId)}`, { method: 'POST' });
+      document.getElementById('active-mod-label').textContent = modId;
+      selectedContextFiles.clear();
+      updateContextCountLabel();
+      await refreshFileTree();
+      showToast(`Активный мод: ${modId}`);
+    }
+
+    function renderProfilesPills() {
+      const box = document.getElementById('profiles-pills');
+      box.innerHTML = savedProfiles.map(p => `
+        <button onclick='applyProfile(${JSON.stringify(p).replace(/'/g, "&#39;")})' class="px-3 py-1.5 rounded-xl bg-mocha-surface0 hover:bg-mocha-surface1 text-xs font-medium text-mocha-sapphire border border-mocha-surface1">
+          ${escapeHtml(p.name)}
+        </button>
+      `).join('');
+    }
+
+    function applyProfile(p) {
+      document.getElementById('api-profile-name').value = p.name || '';
+      document.getElementById('api-base-url').value = p.base_url || '';
+      if (p.api_key) document.getElementById('api-key-input').value = p.api_key;
+      document.getElementById('api-model-id').value = p.model || '';
+      persistCurrentApiToLocal();
+      showToast(`Выбран профиль: ${p.name}`);
+    }
+
+    function persistCurrentApiToLocal() {
+      localStorage.setItem('modforge_base_url', document.getElementById('api-base-url').value.trim());
+      localStorage.setItem('modforge_api_key', document.getElementById('api-key-input').value.trim());
+      localStorage.setItem('modforge_model', document.getElementById('api-model-id').value.trim());
+    }
+
+    async function saveCurrentProfile() {
+      persistCurrentApiToLocal();
+      const name = document.getElementById('api-profile-name').value.trim() || 'Custom API';
+      const payload = {
+        id: name.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+        name,
+        base_url: document.getElementById('api-base-url').value.trim(),
+        api_key: document.getElementById('api-key-input').value.trim(),
+        model: document.getElementById('api-model-id').value.trim()
+      };
+      const res = await fetch('/api/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.ok) {
+        savedProfiles = data.profiles;
+        renderProfilesPills();
+        showToast('Профиль сохранен!');
+      }
+    }
+
+    function insertDemoCurl() {
+      document.getElementById('raw-curl-input').value = `curl https://anymodel.org/v1/chat/completions \\\n  -H "Content-Type: application/json" \\\n  -H "Authorization: Bearer sk-anymodel-demo-9988776655" \\\n  -d '{"model": "ds/deepseek-v4-pro", "messages": [{"role": "user", "content": "Hello"}]}'`;
+    }
+
+    async function parseCurlAndFill() {
+      const raw = document.getElementById('raw-curl-input').value.trim();
+      if (!raw) {
+        showToast('Сначала вставьте cURL-команду!');
+        return;
+      }
+      const res = await fetch('/api/parse-curl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw_curl: raw })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById('api-base-url').value = data.base_url;
+        if (data.api_key) document.getElementById('api-key-input').value = data.api_key;
+        if (data.model) document.getElementById('api-model-id').value = data.model;
+        persistCurrentApiToLocal();
+        showToast('Настройки из cURL успешно извлечены!');
+      }
+    }
+
+    async function pingApiConnection() {
+      persistCurrentApiToLocal();
+      const box = document.getElementById('ping-result-box');
+      box.classList.remove('hidden');
+      box.className = "rounded-xl p-2.5 text-xs font-mono border border-mocha-blue bg-mocha-surface0 text-mocha-blue";
+      box.textContent = "Проверка соединения с провайдером...";
+
+      const res = await fetch('/api/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base_url: document.getElementById('api-base-url').value.trim(),
+          api_key: document.getElementById('api-key-input').value.trim(),
+          model: document.getElementById('api-model-id').value.trim()
+        })
+      });
+      const data = await res.json();
+      const badge = document.getElementById('badge-ping');
+      if (data.ok) {
+        box.className = "rounded-xl p-2.5 text-xs font-mono border border-mocha-green bg-mocha-green/10 text-mocha-green";
+        box.textContent = `✅ ${data.message}`;
+        badge.textContent = `${data.latency_ms} ms`;
+        badge.className = "text-[10px] px-1.5 py-0.5 rounded-full bg-mocha-green/20 text-mocha-green font-semibold";
+      } else {
+        box.className = "rounded-xl p-2.5 text-xs font-mono border border-mocha-red bg-mocha-red/10 text-mocha-red";
+        box.textContent = `❌ ${data.message}`;
+        badge.textContent = "Ошибка API";
+        badge.className = "text-[10px] px-1.5 py-0.5 rounded-full bg-mocha-red/20 text-mocha-red font-semibold";
+      }
+    }
+
+    async function refreshFileTree() {
+      const res = await fetch('/api/files/tree');
+      const data = await res.json();
+      projectFiles = data.files || [];
+      document.getElementById('active-mod-label').textContent = data.active_mod;
+
+      const treeBox = document.getElementById('file-tree-container');
+      treeBox.innerHTML = projectFiles.map(f => `
+        <div onclick="openFileInEditor('${f.path}')" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-mocha-surface0 cursor-pointer ${activeEditorFile === f.path ? 'bg-mocha-surface0 border border-mocha-mauve/40' : ''}">
+          <span class="code-font text-xs text-mocha-text truncate">${escapeHtml(f.path)}</span>
+          <span class="text-[10px] text-mocha-subtext shrink-0 ml-2">${f.size} B</span>
+        </div>
+      `).join('');
+
+      const ctxBox = document.getElementById('context-files-list');
+      ctxBox.innerHTML = projectFiles.map(f => `
+        <label class="flex items-center gap-2 text-xs text-mocha-text py-0.5 cursor-pointer">
+          <input type="checkbox" ${selectedContextFiles.has(f.path) ? 'checked' : ''} onchange="toggleFileContext('${f.path}', this.checked)" class="rounded accent-mocha-mauve" />
+          <span class="code-font truncate">${escapeHtml(f.path)}</span>
+        </label>
+      `).join('');
+
+      if (!activeEditorFile && projectFiles.length > 0) {
+        openFileInEditor(projectFiles[0].path);
+      }
+    }
+
+    function toggleContextDrawer() {
+      document.getElementById('context-drawer').classList.toggle('hidden');
+    }
+
+    function toggleFileContext(path, checked) {
+      if (checked) selectedContextFiles.add(path);
+      else selectedContextFiles.delete(path);
+      updateContextCountLabel();
+    }
+
+    function updateContextCountLabel() {
+      document.getElementById('context-count-label').textContent = `${selectedContextFiles.size} файлов выбрано`;
+    }
+
+    async function openFileInEditor(path) {
+      activeEditorFile = path;
+      document.getElementById('editor-file-path').textContent = path;
+      const res = await fetch(`/api/files/read?path=${encodeURIComponent(path)}`);
+      if (res.ok) {
+        const data = await res.json();
+        document.getElementById('code-editor-textarea').value = data.content;
+      }
+      refreshFileTree();
+    }
+
+    async function saveActiveEditorFile() {
+      if (!activeEditorFile) return;
+      const content = document.getElementById('code-editor-textarea').value;
+      const res = await fetch('/api/files/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: activeEditorFile, content })
+      });
+      if (res.ok) {
+        showToast(`💾 Сохранено: ${activeEditorFile}`);
+        refreshFileTree();
+      }
+    }
+
+    async function promptCreateNewFile() {
+      const path = prompt('Введите относительный путь нового файла:', 'src/main/java/com/example/NewItem.java');
+      if (!path) return;
+      await fetch('/api/files/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path, content: '// Новый файл\n' })
+      });
+      await openFileInEditor(path);
+      showToast(`Создан файл ${path}`);
+    }
+
+    async function writeGeneratedBlockToProject(blockId, btnEl) {
+      const item = generatedCodeStore[blockId];
+      if (!item) return;
+      const res = await fetch('/api/files/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: item.path, content: item.code })
+      });
+      if (res.ok) {
+        btnEl.innerHTML = '✅ Записано в проект!';
+        btnEl.className = "px-3 py-1.5 rounded-lg bg-mocha-green text-mocha-crust font-bold text-xs flex items-center gap-1";
+        showToast(`Файл записан: ${item.path}`);
+        refreshFileTree();
+      }
+    }
+
+    function renderAssistantMarkdownWithFiles(rawText) {
+      const fileRegex = /<file\s+path=["']([^"']+)["']\s*>([\s\S]*?)<\/file>/g;
+      let lastIndex = 0;
+      let htmlParts = [];
+      let match;
+
+      while ((match = fileRegex.exec(rawText)) !== null) {
+        const beforeText = rawText.slice(lastIndex, match.index);
+        if (beforeText.trim()) {
+          htmlParts.push(`<div class="whitespace-pre-wrap text-xs leading-relaxed">${escapeHtml(beforeText.trim())}</div>`);
+        }
+        const filePath = match[1].trim();
+        const fileCode = match[2].replace(/^\n+|\n+$/g, '');
+        const blockId = `file_block_${++codeBlockSeq}`;
+        generatedCodeStore[blockId] = { path: filePath, code: fileCode };
+
+        htmlParts.push(`
+          <div class="my-2 rounded-xl overflow-hidden border border-mocha-mauve/50 bg-mocha-crust shadow-md">
+            <div class="bg-mocha-surface0 px-3 py-2 flex items-center justify-between gap-2 border-b border-mocha-surface1">
+              <span class="code-font text-[11px] text-mocha-sapphire font-semibold truncate">${escapeHtml(filePath)}</span>
+              <button onclick="writeGeneratedBlockToProject('${blockId}', this)" class="px-2.5 py-1 rounded-lg bg-mocha-mauve hover:bg-mocha-blue text-mocha-crust font-bold text-xs flex items-center gap-1 shrink-0 active:scale-95 transition">
+                <span>💾 Записать в проект</span>
+              </button>
+            </div>
+            <pre><code class="hljs code-font">${escapeHtml(fileCode)}</code></pre>
+          </div>
+        `);
+        lastIndex = fileRegex.lastIndex;
+      }
+
+      const tail = rawText.slice(lastIndex);
+      if (tail.trim()) {
+        htmlParts.push(`<div class="whitespace-pre-wrap text-xs leading-relaxed">${escapeHtml(tail)}</div>`);
+      }
+      return htmlParts.join('');
+    }
+
+    function fillQuickPrompt(type) {
+      const input = document.getElementById('chat-input');
+      const modId = document.getElementById('active-mod-label').textContent;
+      if (type === 'item') {
+        input.value = `Добавь в мод ${modId} новый магический предмет "Ruby Talisman" со стаком 16 и эффектом регенерации при правом клике. Оберни все файлы в теги <file path="...">.`;
+      } else if (type === 'block') {
+        input.value = `Создай в моде ${modId} новый светящийся блок "Void Ore" (Luminance 12, твердость 4.0f) + BlockItem + локализацию ru_ru.json и en_us.json в тегах <file path="...">.`;
+      } else if (type === 'crash') {
+        input.value = `Проанализируй мой мод ${modId}, проверь правильность регистрации в главном классе и исправь возможные ошибки инициализации. Выдай исправленные файлы в <file path="...">.`;
+      } else {
+        input.value = `Создай в моде ${modId} кастомный меч "Stormblade", который при ударе по мобу призывает молнию (LightningEntity) и имеет кулдаун 60 тиков. Выдай полный код в <file path="...">.`;
+      }
+      input.focus();
+    }
+
+    function clearChat() {
+      chatHistory = [];
+      document.getElementById('chat-messages').innerHTML = '';
+      showToast('История диалога очищена');
+    }
+
+    async function sendChatMessage() {
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      persistCurrentApiToLocal();
+      const baseUrl = document.getElementById('api-base-url').value.trim();
+      const apiKey = document.getElementById('api-key-input').value.trim();
+      const model = document.getElementById('api-model-id').value.trim();
+
+      input.value = '';
+      chatHistory.push({ role: 'user', content: text });
+
+      const chatBox = document.getElementById('chat-messages');
+      const userBubble = document.createElement('div');
+      userBubble.className = "bg-mocha-mauve/20 border border-mocha-mauve/40 rounded-2xl p-3 ml-6 text-xs text-white whitespace-pre-wrap";
+      userBubble.textContent = text;
+      chatBox.appendChild(userBubble);
+
+      const aiBubble = document.createElement('div');
+      aiBubble.className = "bg-mocha-mantle border border-mocha-surface0 rounded-2xl p-3 mr-2 space-y-2";
+      aiBubble.innerHTML = `<div class="text-[11px] text-mocha-mauve font-semibold">🤖 ${escapeHtml(model)} • Стриминг...</div><div class="ai-stream-body text-xs text-mocha-text whitespace-pre-wrap">...</div>`;
+      chatBox.appendChild(aiBubble);
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      const bodyEl = aiBubble.querySelector('.ai-stream-body');
+      let fullReply = "";
+
+      try {
+        const response = await fetch('/api/chat/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            base_url: baseUrl,
+            api_key: apiKey,
+            model: model,
+            messages: chatHistory,
+            context_files: Array.from(selectedContextFiles)
+          })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue;
+            const dataStr = line.slice(5).trim();
+            if (dataStr === '[DONE]') break;
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.error) {
+                fullReply += `\n[Ошибка]: ${parsed.error}`;
+              } else if (parsed.token) {
+                fullReply += parsed.token;
+              }
+              bodyEl.textContent = fullReply;
+              chatBox.scrollTop = chatBox.scrollHeight;
+            } catch (_) {}
+          }
+        }
+
+        chatHistory.push({ role: 'assistant', content: fullReply });
+        bodyEl.innerHTML = renderAssistantMarkdownWithFiles(fullReply);
+        aiBubble.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+      } catch (err) {
+        bodyEl.textContent = `Ошибка запроса к серверу: ${err}`;
+      }
+    }
+
+    function openNewModModal() {
+      document.getElementById('modal-new-mod').classList.remove('hidden');
+      document.getElementById('modal-new-mod').classList.add('flex');
+    }
+
+    function closeNewModModal() {
+      document.getElementById('modal-new-mod').classList.add('hidden');
+      document.getElementById('modal-new-mod').classList.remove('flex');
+    }
+
+    async function submitCreateNewMod() {
+      const payload = {
+        loader: document.getElementById('new-mod-loader').value,
+        mc_version: document.getElementById('new-mod-mcver').value,
+        mod_id: document.getElementById('new-mod-id').value.trim(),
+        mod_name: document.getElementById('new-mod-name').value.trim(),
+        base_package: document.getElementById('new-mod-pkg').value.trim()
+      };
+      const res = await fetch('/api/mods/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.ok) {
+        closeNewModModal();
+        populateModSwitcher(data.available_mods, data.active_mod);
+        activeEditorFile = "";
+        await refreshFileTree();
+        switchTab('files');
+        showToast(`Создан мод ${data.active_mod} (${payload.loader})`);
+      }
+    }
+
+    async function generateGithubWorkflow() {
+      const res = await fetch('/api/ci/generate', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        await refreshFileTree();
+        await openFileInEditor(data.path);
+        switchTab('files');
+        showToast('Создан .github/workflows/build.yml!');
+      }
+    }
+
+    function runQuickTerm(cmd) {
+      document.getElementById('term-cmd-input').value = cmd;
+      executeTerminalCommand();
+    }
+
+    async function executeTerminalCommand() {
+      const cmd = document.getElementById('term-cmd-input').value.trim();
+      if (!cmd) return;
+      const out = document.getElementById('term-output');
+      out.textContent = `$ ${cmd}\nВыполнение...`;
+      const res = await fetch('/api/terminal/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: cmd })
+      });
+      const data = await res.json();
+      out.textContent = `$ ${cmd}\n${data.output}`;
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>

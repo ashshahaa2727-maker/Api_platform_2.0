@@ -1,0 +1,6 @@
+{
+  "name": "ModForge AI",
+  "description": "Mobile AI Modding IDE for Minecraft (Fabric, NeoForge, Forge) with Smart cURL Connection Hub, 1-click <file> writer, project ZIP builder, and embedded Termux server.py + index.html bundle.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

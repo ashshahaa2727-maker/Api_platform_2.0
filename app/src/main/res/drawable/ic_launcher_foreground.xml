@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Isometric Minecraft Modding Cube Silhouette -->
+    <path
+        android:fillColor="#CBA6F7"
+        android:pathData="M54,24 L80,39 L54,54 L28,39 Z" />
+    <path
+        android:fillColor="#89B4FA"
+        android:pathData="M28,39 L54,54 L54,84 L28,69 Z" />
+    <path
+        android:fillColor="#A6E3A1"
+        android:pathData="M54,54 L80,39 L80,69 L54,84 Z" />
+    <!-- Code Bracket Overlay -->
+    <path
+        android:fillColor="#1E1E2E"
+        android:pathData="M46,35 L38,40 L46,45 L48,42 L43,40 L48,38 Z M62,35 L70,40 L62,45 L60,42 L65,40 L60,38 Z" />
+</vector>

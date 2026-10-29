@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">ModForge AI</string>
+    <string name="tab_ai_coder">AI Кодер</string>
+    <string name="tab_mod_files">Файлы мода</string>
+    <string name="tab_api_models">API &amp; Модели</string>
+    <string name="tab_build_terminal">Сборка &amp; Termux</string>
+    <string name="new_mod_button">Новый мод</string>
+    <string name="apply_file_button">💾 Записать в проект</string>
+    <string name="parse_curl_button">Распарсить cURL и заполнить</string>
+    <string name="export_zip_button">Скачать .ZIP архив мода</string>
+    <string name="export_termux_bundle">Экспорт server.py + index.html</string>
+</resources>

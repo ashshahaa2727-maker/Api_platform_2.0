@@ -1,0 +1,87 @@
+name: Build Android APK (ModForge AI)
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Compile ModForge AI APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | sdkmanager --licenses || true
+
+      - name: Prepare .env and debug.keystore for Signing
+        run: |
+          if [ ! -f ".env" ]; then
+            cp .env.example .env || touch .env
+          fi
+          if [ ! -f "debug.keystore" ]; then
+            keytool -genkeypair -v \
+              -keystore debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Setup Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Compile Debug APK
+        run: |
+          gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Prepare Named APK File
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/ModForge-AI-PocoX3Pro.apk
+
+      - name: Upload Compiled APK to GitHub Actions Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ModForge-AI-PocoX3Pro-APK
+          path: app/build/outputs/apk/debug/ModForge-AI-PocoX3Pro.apk
+          if-no-files-found: error
+
+      - name: Create GitHub Release with APK
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: "ModForge AI APK #${{ github.run_number }}"
+          body: |
+            Готовая облачная сборка **ModForge AI (Mobile AI Modding IDE)** для Poco X3 Pro.
+            - **ModForge-AI-PocoX3Pro.apk** — нативное Android-приложение
+            - **server.py** + **index.html** — автономный веб-сервер для Termux (`http://localhost:8080`)
+          files: |
+            app/build/outputs/apk/debug/ModForge-AI-PocoX3Pro.apk
+            server.py
+            index.html
+          draft: false
+          prerelease: false
